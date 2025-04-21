@@ -61,6 +61,7 @@ private:
     QLineEdit *sendCmdEt;
     QPushButton *sendCmdBtn;
 
+
 signals:
 };
 
