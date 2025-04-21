@@ -61,6 +61,9 @@ private:
     QLineEdit *sendCmdEt;
     QPushButton *sendCmdBtn;
 
+private:
+    void initCombox();
+    void initCom();
 
 signals:
 };

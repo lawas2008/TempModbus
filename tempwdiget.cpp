@@ -3,6 +3,7 @@
 #include "QVBoxLayout"
 #include "QGroupBox"
 #include "QFormLayout"
+#include "QSerialPortInfo"
 
 /**
  * @brief TempWdiget::TempWdiget 主界面
@@ -175,4 +176,33 @@ TempWdiget::TempWdiget(QWidget *parent): QWidget{parent}{
     allLayout->addLayout(comLogLayout);
 
     setLayout(allLayout);
+
+    initCombox();
+}
+
+/**
+ * @brief TempWdiget::initCombox
+ * 初始化combox
+ */
+void TempWdiget::initCombox(){
+    QStringList rateList;
+    rateList << "4800" << "9600" << "14400" << "19200" << "38400" << "57600" << "115200";
+    rateSetCombox->addItems(rateList);
+    ratesCombox->addItems(rateList);
+}
+
+/**
+ * @brief TempWdiget::initCom
+ * 初始化串口
+ */
+void TempWdiget::initCom(){
+    // 获取所有可用的串口信息
+    const auto infos = QSerialPortInfo::availablePorts();
+    QStringList comList;
+    for (const QSerialPortInfo &info : infos) {
+       comList << info.portName();
+    }
+    if(comList.length() > 0){
+        portCombox->addItems(comList);
+    }
 }
