@@ -178,6 +178,8 @@ TempWdiget::TempWdiget(QWidget *parent): QWidget{parent}{
     setLayout(allLayout);
 
     initCombox();
+
+    initCom();
 }
 
 /**
@@ -205,4 +207,12 @@ void TempWdiget::initCom(){
     if(comList.length() > 0){
         portCombox->addItems(comList);
     }
+}
+
+/**
+ * @brief TempWdiget::onOpenCom
+ * 打开串口
+ */
+void TempWdiget::onOpenCom(){
+
 }

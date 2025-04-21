@@ -60,6 +60,8 @@ private:
     //发送消息
     QLineEdit *sendCmdEt;
     QPushButton *sendCmdBtn;
+private slots:
+    void onOpenCom();
 
 private:
     void initCombox();
