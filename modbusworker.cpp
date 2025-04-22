@@ -1,6 +1,28 @@
 #include "modbusworker.h"
 #include <QDebug>
 
+/**
+ * @brief calculateCRC16 crc16校验
+ * @param data
+ * @return
+ */
+quint16 calculateCRC16(const QByteArray &data) {
+    quint16 crc = 0xFFFF; // 初始值
+    for(int i = 0; i < data.size(); ++i) {
+        crc ^= (quint8)data[i]; // XOR byte into least sig. byte of crc
+
+        for(int j = 0; j < 8; ++j) { // Loop over each bit
+            if((crc & 0x0001) != 0) { // If the LSB is set
+                crc >>= 1; // Shift right and XOR 0xA001
+                crc ^= 0xA001;
+            } else { // Else LSB is not set
+                crc >>= 1; // Just shift right
+            }
+        }
+    }
+    return crc;
+}
+
 ModbusWorker::ModbusWorker(QObject *parent): QObject{parent}{
 
 }
@@ -67,7 +89,17 @@ void ModbusWorker::disconnectModbus(){
  */
 void ModbusWorker::readRegister(int addr, int count)
 {
-
+    if(!modbus){
+        return;
+    }
+    qDebug() << "ModbusWorker readRegister addr:" << addr << "count:" << count;
+    QVector<uint16_t> buffer(count);
+    int rc = modbus_read_registers(modbus, addr, count, buffer.data());
+    if (rc == -1) {
+        emit error("Read error: " + QString(modbus_strerror(errno)));
+    } else {
+        emit readFinished(buffer);
+    }
 }
 
 /**
@@ -78,6 +110,11 @@ void ModbusWorker::readRegister(int addr, int count)
  */
 void ModbusWorker::writeRegister(int addr, uint16_t value)
 {
-
+    if(!modbus){
+        return;
+    }
+    qDebug() << "ModbusWorker writeRegister addr:" << addr << "value:" << value;
+    int rc = modbus_write_register(modbus,addr,value);
+    emit writeFinished(rc != -1);
 }
 

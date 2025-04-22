@@ -7,6 +7,7 @@
 #include "QThread"
 #include "QMessageBox"
 #include "QApplication"
+#include "QDebug"
 
 /**
  * @brief TempWdiget::TempWdiget 主界面
@@ -190,11 +191,16 @@ TempWdiget::TempWdiget(QWidget *parent): QWidget{parent}{
     worker->moveToThread(modbusThread);
     connect(worker,&ModbusWorker::connectStatusChanged,this,&TempWdiget::updateOpenBtnStatus);
     connect(worker,&ModbusWorker::error,this,&TempWdiget::updateError);
+    connect(worker,&ModbusWorker::readFinished,this,&TempWdiget::readDataFinish);
+    connect(worker,&ModbusWorker::writeFinished,this,&TempWdiget::writeDataFinish);
     connect(modbusThread,&QThread::finished,worker,&QObject::deleteLater);
     modbusThread->start();
 
     //打开串口事件
     connect(openSerialBtn,&QPushButton::clicked,this,&TempWdiget::openCom);
+
+    //读取版本号
+    connect(getVersionBtn,&QPushButton::clicked,this,&TempWdiget::getVersion);
 }
 
 /**
@@ -231,7 +237,8 @@ void TempWdiget::initCom(){
 void TempWdiget::openCom(){
     if (openSerialBtn->text() == "打开") {
         // 触发连接操作（通过线程安全方式调用 Worker）
-        QString com = portCombox->currentText();
+        QString com = "/dev/";
+        com += portCombox->currentText();
         int rate = ratesCombox->currentText().toInt();
         int addr = 1;
         if(addrLowEdit->text().isEmpty()){
@@ -327,7 +334,7 @@ void TempWdiget::addrSet()
 
 }
 
-/**
+/**readDataFinish
  * @brief TempWdiget::setRate
  * 波特率设置
  */
@@ -342,7 +349,10 @@ void TempWdiget::setRate()
  */
 void TempWdiget::getVersion()
 {
-
+    if(!worker){
+        return;
+    }
+    worker->readRegister(0,1);
 }
 
 /**
@@ -392,6 +402,26 @@ void TempWdiget::updateError(QString msg)
         msgBox.setParent(parent);
     }
     msgBox.exec();  // 阻塞式弹窗
+}
+
+/**
+ * @brief TempWdiget::readDataFinish
+ * 读数据完成
+ * @param data
+ */
+void TempWdiget::readDataFinish(const QVector<uint16_t> &data)
+{
+    qDebug() << "TempWdiget readDataFinish data:" << data;
+}
+
+/**
+ * @brief TempWdiget::writeDataFinish
+ * 写数据完成
+ * @param value
+ */
+void TempWdiget::writeDataFinish(int value)
+{
+    qDebug() << "TempWdiget writeDataFinish value:" << value;
 }
 
 

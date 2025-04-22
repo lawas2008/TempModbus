@@ -97,6 +97,10 @@ private slots:
     void updateOpenBtnStatus(bool isconnected);
     //更新错误信息弹窗
     void updateError(QString msg);
+    //读数据返回
+    void readDataFinish(const QVector<uint16_t> &data);
+    //写数据返回
+    void writeDataFinish(int value);
 
 private:
     void initCombox();
