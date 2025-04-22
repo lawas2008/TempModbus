@@ -4,6 +4,9 @@
 #include "QGroupBox"
 #include "QFormLayout"
 #include "QSerialPortInfo"
+#include "QThread"
+#include "QMessageBox"
+#include "QApplication"
 
 /**
  * @brief TempWdiget::TempWdiget 主界面
@@ -180,6 +183,18 @@ TempWdiget::TempWdiget(QWidget *parent): QWidget{parent}{
     initCombox();
 
     initCom();
+
+    //初始化线程和worker
+    modbusThread = new QThread(this);
+    worker = new ModbusWorker();
+    worker->moveToThread(modbusThread);
+    connect(worker,&ModbusWorker::connectStatusChanged,this,&TempWdiget::updateOpenBtnStatus);
+    connect(worker,&ModbusWorker::error,this,&TempWdiget::updateError);
+    connect(modbusThread,&QThread::finished,worker,&QObject::deleteLater);
+    modbusThread->start();
+
+    //打开串口事件
+    connect(openSerialBtn,&QPushButton::clicked,this,&TempWdiget::openCom);
 }
 
 /**
@@ -210,9 +225,174 @@ void TempWdiget::initCom(){
 }
 
 /**
- * @brief TempWdiget::onOpenCom
+ * @brief TempWdiget::openCom
  * 打开串口
  */
-void TempWdiget::onOpenCom(){
+void TempWdiget::openCom(){
+    if (openSerialBtn->text() == "打开") {
+        // 触发连接操作（通过线程安全方式调用 Worker）
+        QString com = portCombox->currentText();
+        int rate = ratesCombox->currentText().toInt();
+        int addr = 1;
+        if(addrLowEdit->text().isEmpty()){
+            addr = 1;
+        }else{
+            addr = addrLowEdit->text().toInt();
+        }
+        QMetaObject::invokeMethod(worker, "connectModbus", Qt::QueuedConnection,Q_ARG(QString, com),Q_ARG(int, rate),Q_ARG(int, addr));
+    } else {
+        // 触发断开操作
+        QMetaObject::invokeMethod(worker, &ModbusWorker::disconnectModbus, Qt::QueuedConnection);
+    }
+}
+
+/**
+ * @brief TempWdiget::allParamOne
+ * 全部参数获取一次
+ */
+void TempWdiget::allParamOne()
+{
 
 }
+
+/**
+ * @brief TempWdiget::allParamCycle
+ * 全部参数循环获取
+ */
+void TempWdiget::allParamCycle()
+{
+
+}
+
+/**
+ * @brief TempWdiget::tempColdOne
+ * 温湿度获取一次
+ */
+void TempWdiget::tempColdOne()
+{
+
+}
+
+/**
+ * @brief TempWdiget::tempColdCycle
+ * 温湿度获取循环
+ */
+void TempWdiget::tempColdCycle()
+{
+
+}
+
+/**
+ * @brief TempWdiget::tempOne
+ * 温度获取一次
+ */
+void TempWdiget::tempOne()
+{
+
+}
+
+/**
+ * @brief TempWdiget::tempCycle
+ * 温度获取循环
+ */
+void TempWdiget::tempCycle()
+{
+
+}
+
+/**
+ * @brief TempWdiget::coldOne
+ * 湿度获取一次
+ */
+void TempWdiget::coldOne()
+{
+
+}
+
+/**
+ * @brief TempWdiget::coldCycle
+ * 湿度获取循环
+ */
+void TempWdiget::coldCycle()
+{
+
+}
+
+/**
+ * @brief TempWdiget::addrSet
+ * 站点设置
+ */
+void TempWdiget::addrSet()
+{
+
+}
+
+/**
+ * @brief TempWdiget::setRate
+ * 波特率设置
+ */
+void TempWdiget::setRate()
+{
+
+}
+
+/**
+ * @brief TempWdiget::getVersion
+ * 版本号获取
+ */
+void TempWdiget::getVersion()
+{
+
+}
+
+/**
+ * @brief TempWdiget::sendMsg
+ * 消息发送
+ */
+void TempWdiget::sendMsg()
+{
+
+}
+
+/**
+ * @brief TempWdiget::updateOpenBtnStatus
+ * 更新打开按钮状态
+ * @param isconnected
+ */
+void TempWdiget::updateOpenBtnStatus(bool isconnected)
+{
+    openSerialBtn->setText(isconnected ? "关闭" : "打开");
+    if (isconnected) {
+        openSerialBtn->setStyleSheet("background-color: green; color: white;");
+    } else {
+        openSerialBtn->setStyleSheet("");
+    }
+}
+
+/**
+ * @brief TempWdiget::updateError
+ * 更新错误提示信息
+ * @param msg
+ */
+void TempWdiget::updateError(QString msg)
+{
+    QMessageBox msgBox;
+    msgBox.setIcon(QMessageBox::Critical);    // 设置图标为错误类型
+    msgBox.setWindowTitle("错误");             // 标题
+    msgBox.setText("发生错误");                // 主文本
+    msgBox.setInformativeText(msg);       // 详细描述
+    msgBox.setStandardButtons(QMessageBox::Ok); // 按钮
+    msgBox.setStyleSheet(
+        "QMessageBox { background-color: #2b2b2b; color: white; }"
+        "QLabel { color: white; }"
+        "QPushButton { background-color: #4CAF50; color: white; }"
+        );
+    QWidget *parent = QApplication::activeWindow();
+    if (parent) {
+        msgBox.setParent(parent);
+    }
+    msgBox.exec();  // 阻塞式弹窗
+}
+
+
+

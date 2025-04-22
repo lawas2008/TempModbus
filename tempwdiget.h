@@ -7,6 +7,7 @@
 #include <QPushButton>
 #include <QComboBox>
 #include <QListView>
+#include <modbusworker.h>
 
 class TempWdiget : public QWidget
 {
@@ -60,8 +61,42 @@ private:
     //发送消息
     QLineEdit *sendCmdEt;
     QPushButton *sendCmdBtn;
+
+    //libModbus线程
+    ModbusWorker *worker;
+    QThread *modbusThread;
+
 private slots:
-    void onOpenCom();
+    //打开串口
+    void openCom();
+    //所有参数单次
+    void allParamOne();
+    //所有参数循环
+    void allParamCycle();
+    //温湿度单次
+    void tempColdOne();
+    //温湿度循环
+    void tempColdCycle();
+    //温度单次
+    void tempOne();
+    //温度循环
+    void tempCycle();
+    //湿度单次
+    void coldOne();
+    //湿度循环
+    void coldCycle();
+    //设置站号
+    void addrSet();
+    //设置波特率
+    void setRate();
+    //获取版本
+    void getVersion();
+    //发送消息
+    void sendMsg();
+    //更新串口打开按钮状态
+    void updateOpenBtnStatus(bool isconnected);
+    //更新错误信息弹窗
+    void updateError(QString msg);
 
 private:
     void initCombox();

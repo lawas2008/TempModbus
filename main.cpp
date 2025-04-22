@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
         }
     }
     TempWdiget widget;
-    widget.resize(800,600);
+    widget.resize(1024,580);
     widget.setWindowTitle("温湿度工具");
     widget.show();
     return a.exec();

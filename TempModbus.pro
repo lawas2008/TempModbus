@@ -2,6 +2,10 @@ QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
+# 添加 libmodbus 头文件和库路径
+INCLUDEPATH += /opt/libmodbus/install/include
+LIBS += -L/opt/libmodbus/install/lib -lmodbus
+
 # 启用多线程
 CONFIG += c++17 thread
 
@@ -11,9 +15,11 @@ CONFIG += c++17 thread
 
 SOURCES += \
     main.cpp \
+    modbusworker.cpp \
     tempwdiget.cpp
 
 HEADERS += \
+    modbusworker.h \
     tempwdiget.h
 
 TRANSLATIONS += \
