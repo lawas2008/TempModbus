@@ -52,6 +52,8 @@ void ModbusWorker::connectModbus(QString com,int rate,int addr){
         emit error("Failed to create Modbus context");
         return;
     }
+    //启用调试功能
+    modbus_set_debug(modbus, TRUE);
     modbus_set_slave(modbus,addr);
     modbus_set_response_timeout(modbus,1000,1000);
     if(modbus_connect(modbus) == -1){
@@ -95,6 +97,7 @@ void ModbusWorker::readRegister(int addr, int count)
     qDebug() << "ModbusWorker readRegister addr:" << addr << "count:" << count;
     QVector<uint16_t> buffer(count);
     int rc = modbus_read_registers(modbus, addr, count, buffer.data());
+    qDebug() << "ModbusWorker readRegister addr:" << addr << "rc:" << rc;
     if (rc == -1) {
         emit error("Read error: " + QString(modbus_strerror(errno)));
     } else {

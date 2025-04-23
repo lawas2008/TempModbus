@@ -90,21 +90,21 @@ TempWdiget::TempWdiget(QWidget *parent): QWidget{parent}{
     QHBoxLayout *tempLayout = new QHBoxLayout();
     QLabel *tempGTitle = new QLabel("温度");
     tempGTitle->setFixedWidth(80);
-    getParamSingleBtn = new QPushButton("单次");
-    getParamCycleBtn = new QPushButton("循环");
+    getTempSingleBtn = new QPushButton("单次");
+    getTempCycleBtn = new QPushButton("循环");
     tempLayout->addWidget(tempGTitle);
-    tempLayout->addWidget(getParamSingleBtn);
-    tempLayout->addWidget(getParamCycleBtn);
+    tempLayout->addWidget(getTempSingleBtn);
+    tempLayout->addWidget(getTempCycleBtn);
     groupVLayout->addLayout(tempLayout);
 
     QHBoxLayout *coldLayout = new QHBoxLayout();
     QLabel *coldGTitle = new QLabel("湿度");
     coldGTitle->setFixedWidth(80);
-    getParamSingleBtn = new QPushButton("单次");
-    getParamCycleBtn = new QPushButton("循环");
+    getColdSingleBtn = new QPushButton("单次");
+    getColdeCycleBtn = new QPushButton("循环");
     coldLayout->addWidget(coldGTitle);
-    coldLayout->addWidget(getParamSingleBtn);
-    coldLayout->addWidget(getParamCycleBtn);
+    coldLayout->addWidget(getColdSingleBtn);
+    coldLayout->addWidget(getColdeCycleBtn);
     groupVLayout->addLayout(coldLayout);
 
     QHBoxLayout *addrLayout = new QHBoxLayout();
@@ -198,7 +198,10 @@ TempWdiget::TempWdiget(QWidget *parent): QWidget{parent}{
 
     //打开串口事件
     connect(openSerialBtn,&QPushButton::clicked,this,&TempWdiget::openCom);
-
+    //获取温湿度单次
+    connect(getTempCSingleBtn,&QPushButton::clicked,this,&TempWdiget::tempColdOne);
+    //获取湿度单次
+    connect(getColdSingleBtn,&QPushButton::clicked,this,&TempWdiget::coldOne);
     //读取版本号
     connect(getVersionBtn,&QPushButton::clicked,this,&TempWdiget::getVersion);
 }
@@ -212,6 +215,8 @@ void TempWdiget::initCombox(){
     rateList << "4800" << "9600" << "14400" << "19200" << "38400" << "57600" << "115200";
     rateSetCombox->addItems(rateList);
     ratesCombox->addItems(rateList);
+    rateSetCombox->setCurrentIndex(rateList.length()-1);
+    ratesCombox->setCurrentIndex(rateList.length()-1);
 }
 
 /**
@@ -228,6 +233,7 @@ void TempWdiget::initCom(){
     if(comList.length() > 0){
         portCombox->addItems(comList);
     }
+    portCombox->setCurrentIndex(4);
 }
 
 /**
@@ -277,7 +283,10 @@ void TempWdiget::allParamCycle()
  */
 void TempWdiget::tempColdOne()
 {
-
+    if(!worker){
+        return;
+    }
+    worker->readRegister(1,2);
 }
 
 /**
@@ -313,7 +322,10 @@ void TempWdiget::tempCycle()
  */
 void TempWdiget::coldOne()
 {
-
+    if(!worker){
+        return;
+    }
+    worker->readRegister(1,1);
 }
 
 /**
