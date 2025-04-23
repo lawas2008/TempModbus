@@ -105,7 +105,8 @@ private slots:
 private:
     void initCombox();
     void initCom();
-
+    bool initGpio(const QString &gpioName,int value);
+    bool writeGpioValue(const QString &gpioName,bool value);
 signals:
 };
 

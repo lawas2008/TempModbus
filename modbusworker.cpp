@@ -1,5 +1,8 @@
 #include "modbusworker.h"
 #include <QDebug>
+#include <fcntl.h>
+#define SERVER_GPIO_INDEX   "PI10"
+
 
 /**
  * @brief calculateCRC16 crc16校验
@@ -23,6 +26,45 @@ quint16 calculateCRC16(const QByteArray &data) {
     return crc;
 }
 
+static int custom_rts_rtu_ioctl_on(void)
+{
+    int fd;
+    fd = open("/sys/class/gpio/" SERVER_GPIO_INDEX "/value", O_WRONLY);
+    if(fd < 0)
+        return 1;
+
+    write(fd, "1", 1);
+    close(fd);
+    return 0;
+}
+
+static int custom_rts_rtu_ioctl_off(void)
+{
+    int fd;
+
+    fd = open("/sys/class/gpio/" SERVER_GPIO_INDEX "/value", O_WRONLY);
+    if(fd < 0)
+        return 1;
+
+    write(fd, "0", 1);
+    close(fd);
+    return 0;
+}
+
+static void custom_rts_rtu(modbus_t *ctx, int on)
+{
+    if (on)
+    {
+        custom_rts_rtu_ioctl_on();
+    }
+    else
+    {
+        //增加100ms延时
+        usleep(100000);
+        custom_rts_rtu_ioctl_off();
+    }
+}
+
 ModbusWorker::ModbusWorker(QObject *parent): QObject{parent}{
 
 }
@@ -35,36 +77,72 @@ ModbusWorker::~ModbusWorker(){
  * @brief ModbusWorker::connectModbus
  * 连接
  */
-void ModbusWorker::connectModbus(QString com,int rate,int addr){
+void ModbusWorker::connectModbus(QString com, int rate, int addr) {
     qDebug() << "ModbusWorker connectModbus com:" << com << "rate:" << rate;
-    if(isconnected){
+
+    if (isconnected) {
         return;
     }
-    if(modbus){
+
+    // 清理旧连接
+    if (modbus) {
         modbus_close(modbus);
         modbus_free(modbus);
         modbus = nullptr;
     }
-    //初始化modbus RTU
+
+    // 初始化上下文
     QByteArray ba = com.toLatin1();
-    modbus = modbus_new_rtu(ba.data(),rate,'N',8,1);
-    if(!modbus){
+    modbus = modbus_new_rtu(ba.data(), rate, 'N', 8, 1);
+    if (!modbus) {
         emit error("Failed to create Modbus context");
         return;
     }
-    //启用调试功能
+
+    // 设置从机地址
+    modbus_set_slave(modbus, addr);
+
+    // 设置超时（单位：秒 + 微秒）
+    modbus_set_response_timeout(modbus, 1, 0);  // 1 秒超时
+
+    // 启用调试模式（可选）
     modbus_set_debug(modbus, TRUE);
-    modbus_set_slave(modbus,addr);
-    modbus_set_response_timeout(modbus,1000,1000);
-    if(modbus_connect(modbus) == -1){
-        emit error("Connection failed: " + QString(modbus_strerror(errno)));
+
+    // 连接串口（此时设备文件才会被打开）
+    if (modbus_connect(modbus) == -1) {
+        qDebug() << "Modbus connect failed:" << modbus_strerror(errno);
         modbus_free(modbus);
         modbus = nullptr;
-    }else{
-        isconnected = true;
-        emit connectStatusChanged(true);
-        qDebug() << "Modbus Connected!";
+        emit error("Failed to connect");
+        return;
     }
+
+    // 设置 RS485 模式
+    if (modbus_rtu_set_serial_mode(modbus, MODBUS_RTU_RS485) == -1) {
+        qDebug() << "Modbus set_serial_mode failed:" << errno << modbus_strerror(errno);
+        modbus_free(modbus);
+        modbus = nullptr;
+        emit error("Failed to set RS485 mode");
+        return;
+    }
+
+    if(modbus_rtu_set_custom_rts(modbus, custom_rts_rtu) == -1)
+    {
+        qDebug() << "Modbus set custom rts fun failed" << errno << modbus_strerror(errno);
+        modbus_free(modbus);
+        return;
+    }
+
+    if(modbus_rtu_set_rts(modbus,MODBUS_RTU_RTS_UP ) == -1)
+    {
+        qDebug() << "Modbus set rs485 rts up failed" << errno << modbus_strerror(errno);
+        modbus_free(modbus);
+        return;
+    }
+
+    qDebug() << "Modbus Connected!";
+    isconnected = true;
+    emit connectStatusChanged(true);
 }
 
 /**
@@ -91,15 +169,20 @@ void ModbusWorker::disconnectModbus(){
  */
 void ModbusWorker::readRegister(int addr, int count)
 {
+    qDebug() << "ModbusWorker readRegister addr:" << addr << "count:" << count;
+
     if(!modbus){
         return;
     }
-    qDebug() << "ModbusWorker readRegister addr:" << addr << "count:" << count;
     QVector<uint16_t> buffer(count);
     int rc = modbus_read_registers(modbus, addr, count, buffer.data());
     qDebug() << "ModbusWorker readRegister addr:" << addr << "rc:" << rc;
+
     if (rc == -1) {
-        emit error("Read error: " + QString(modbus_strerror(errno)));
+        // 提供详细的错误信息
+        emit error("Read error: " + QString("Error code %1: %2").arg(errno).arg(modbus_strerror(errno)));
+    } else if (rc < count) {
+        emit error("Partial read: expected " + QString::number(count) + " registers, got " + QString::number(rc));
     } else {
         emit readFinished(buffer);
     }
@@ -116,8 +199,11 @@ void ModbusWorker::writeRegister(int addr, uint16_t value)
     if(!modbus){
         return;
     }
-    qDebug() << "ModbusWorker writeRegister addr:" << addr << "value:" << value;
     int rc = modbus_write_register(modbus,addr,value);
+    qDebug() << "ModbusWorker writeRegister addr:" << addr << "value:" << value << "rc: " << rc;
+
     emit writeFinished(rc != -1);
 }
+
+
 

@@ -23,7 +23,6 @@ signals:
 private:
     modbus_t *modbus = nullptr;
     bool isconnected = false;
-
 };
 
 #endif // MODBUSWORKER_H

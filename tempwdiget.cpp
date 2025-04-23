@@ -8,6 +8,8 @@
 #include "QMessageBox"
 #include "QApplication"
 #include "QDebug"
+#include <QFile>
+#include "QThread"
 
 /**
  * @brief TempWdiget::TempWdiget 主界面
@@ -196,14 +198,20 @@ TempWdiget::TempWdiget(QWidget *parent): QWidget{parent}{
     connect(modbusThread,&QThread::finished,worker,&QObject::deleteLater);
     modbusThread->start();
 
+    initGpio("PI10",138);
+
     //打开串口事件
     connect(openSerialBtn,&QPushButton::clicked,this,&TempWdiget::openCom);
     //获取温湿度单次
     connect(getTempCSingleBtn,&QPushButton::clicked,this,&TempWdiget::tempColdOne);
     //获取湿度单次
     connect(getColdSingleBtn,&QPushButton::clicked,this,&TempWdiget::coldOne);
+    //获取温度单次
+    connect(getTempSingleBtn,&QPushButton::clicked,this,&TempWdiget::tempOne);
     //读取版本号
     connect(getVersionBtn,&QPushButton::clicked,this,&TempWdiget::getVersion);
+    //写入波特率
+    connect(rateSetBtn,&QPushButton::clicked,this,&TempWdiget::setRate);
 }
 
 /**
@@ -286,7 +294,13 @@ void TempWdiget::tempColdOne()
     if(!worker){
         return;
     }
-    worker->readRegister(1,2);
+    // writeGpioValue("PI10",1);
+    // QThread::msleep(100);
+    QMetaObject::invokeMethod(worker, [this]() {
+        worker->readRegister(1,2); // 阻塞操作在 modbusThread 中执行
+    }, Qt::QueuedConnection);
+    // QThread::msleep(100);
+    // writeGpioValue("PI10",0);
 }
 
 /**
@@ -304,7 +318,16 @@ void TempWdiget::tempColdCycle()
  */
 void TempWdiget::tempOne()
 {
-
+    if(!worker){
+        return;
+    }
+    // writeGpioValue("PI10",1);
+    // QThread::msleep(100);
+    QMetaObject::invokeMethod(worker, [this]() {
+        worker->readRegister(2,1); // 阻塞操作在 modbusThread 中执行
+    }, Qt::QueuedConnection);
+    // QThread::msleep(100);
+    // writeGpioValue("PI10",0);
 }
 
 /**
@@ -318,14 +341,20 @@ void TempWdiget::tempCycle()
 
 /**
  * @brief TempWdiget::coldOne
- * 湿度获取一次
+ * 湿获取一次
  */
 void TempWdiget::coldOne()
 {
     if(!worker){
         return;
     }
-    worker->readRegister(1,1);
+    // writeGpioValue("PI10",1);
+    // QThread::msleep(100);
+    QMetaObject::invokeMethod(worker, [this]() {
+        worker->readRegister(1,1); // 阻塞操作在 modbusThread 中执行
+    }, Qt::QueuedConnection);
+    // QThread::msleep(100);
+    // writeGpioValue("PI10",0);
 }
 
 /**
@@ -352,7 +381,10 @@ void TempWdiget::addrSet()
  */
 void TempWdiget::setRate()
 {
-
+    QMetaObject::invokeMethod(worker, [this]() {
+        int index = rateSetCombox->currentIndex();
+        worker->writeRegister(4,index); // 阻塞操作在 modbusThread 中执行
+    }, Qt::QueuedConnection);
 }
 
 /**
@@ -364,7 +396,14 @@ void TempWdiget::getVersion()
     if(!worker){
         return;
     }
-    worker->readRegister(0,1);
+
+    // writeGpioValue("PI10",1);
+    // QThread::msleep(100);
+    QMetaObject::invokeMethod(worker, [this]() {
+        worker->readRegister(0,1); // 阻塞操作在 modbusThread 中执行
+    }, Qt::QueuedConnection);
+    // QThread::msleep(100);
+    // writeGpioValue("PI10",0);
 }
 
 /**
@@ -436,5 +475,50 @@ void TempWdiget::writeDataFinish(int value)
     qDebug() << "TempWdiget writeDataFinish value:" << value;
 }
 
+/**
+ * @brief ModbusWorker::initGpio
+ * re485通信需要切换0/1 接收-发送状态
+ * @param gpioName PI10
+ * @value 138
+ */
 
+bool TempWdiget::initGpio(const QString &gpioName,int value)
+{
+    QFile exportFile("/sys/class/gpio/export");
+    if(!exportFile.open(QIODevice::WriteOnly)){
+        qWarning() << "导出失败：" << exportFile.errorString();
+        return false;
+    }
+    QTextStream(&exportFile) << value;
+    exportFile.close();
+    QFile dirFile(QString("/sys/class/gpio/%1/direction").arg(gpioName));
+    if (!dirFile.open(QIODevice::WriteOnly)) {
+        qWarning() << "方向设置失败：" << dirFile.errorString();
+        return false;
+    }
+    QTextStream(&dirFile) << "out";
+    dirFile.close();
+    qWarning() << "方向设置成功：" << dirFile.fileName();
+    return true;
+}
+
+/**
+ * @brief ModbusWorker::writeGpioValue
+ * re485通信需要切换0/1 接收-发送状态
+ * @param gpioName PI10
+ * @param value
+ */
+// bool TempWdiget::writeGpioValue(const QString &gpioName, bool value)
+// {
+
+//     QFile file(QString("/sys/class/gpio/%1/value").arg(gpioName));
+//     if (!file.open(QIODevice::WriteOnly)) {
+//         qWarning() << "写值失败：" << file.errorString();
+//         return false;
+//     }
+//     QTextStream(&file) << (value ? "1" : "0");
+//     file.close();
+//     qWarning() << "写值成功：" << file.fileName() << "value:" << value;
+//     return true;
+// }
 
