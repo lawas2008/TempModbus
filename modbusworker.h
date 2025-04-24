@@ -15,6 +15,8 @@ public slots:
     void disconnectModbus();
     void readRegister(int addr,int count);
     void writeRegister(int addr,uint16_t value);
+    void sendMsgRaw(uint8_t raw_request[]);
+
 signals:
     void connectStatusChanged(bool connected);
     void readFinished(const QVector<uint16_t> &data);

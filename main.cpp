@@ -3,6 +3,9 @@
 #include <QApplication>
 #include <QLocale>
 #include <QTranslator>
+#include <QVector>
+#include <QMetaType>
+
 
 int main(int argc, char *argv[])
 {
@@ -17,6 +20,8 @@ int main(int argc, char *argv[])
             break;
         }
     }
+    qRegisterMetaType<QVector<uint16_t>>("QVector<uint16_t>");
+
     TempWdiget widget;
     widget.resize(1024,580);
     widget.setWindowTitle("温湿度工具");

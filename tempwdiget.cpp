@@ -25,27 +25,30 @@ TempWdiget::TempWdiget(QWidget *parent): QWidget{parent}{
 
     //温度
     QVBoxLayout *tempItemLayout = new QVBoxLayout();
-    QLabel *tempTile = new QLabel("Temp");
+    QLabel *tempTile = new QLabel("温度(℃)");
     tempTile->setStyleSheet("QLabel { font-size: 20px; }");
     tempLabel = new QLabel("00.0");
-    tempLabel->setStyleSheet("QLabel { color: green; font-size: 30px; }");
+    tempLabel->setStyleSheet("QLabel { color: red; font-size: 80px; font-weight: bold; }");
+    tempItemLayout->addStretch();
     tempItemLayout->addWidget(tempTile,0,Qt::AlignCenter);
     tempItemLayout->addWidget(tempLabel,0,Qt::AlignCenter);
     tempItemLayout->addStretch();
+
     tempCItemLayout->addStretch();
     tempCItemLayout->addLayout(tempItemLayout);
-
     tempCItemLayout->addSpacing(50);
 
     //湿度
     QVBoxLayout *coldItemLayout = new QVBoxLayout();
-    QLabel *coldTile = new QLabel("Cold");
+    QLabel *coldTile = new QLabel("湿度(%)");
     coldTile->setStyleSheet("QLabel { font-size: 20px; }");
     coldLabel = new QLabel("00.0");
-    coldLabel->setStyleSheet("QLabel { color: blue; font-size: 30px; }");
+    coldLabel->setStyleSheet("QLabel { color: green; font-size: 80px; font-weight: bold; }");
+    coldItemLayout->addStretch();
     coldItemLayout->addWidget(coldTile,0,Qt::AlignCenter);
     coldItemLayout->addWidget(coldLabel,0,Qt::AlignCenter);
     coldItemLayout->addStretch();
+
     tempCItemLayout->addLayout(coldItemLayout);
     tempCItemLayout->addStretch();
 
@@ -202,10 +205,18 @@ TempWdiget::TempWdiget(QWidget *parent): QWidget{parent}{
 
     //打开串口事件
     connect(openSerialBtn,&QPushButton::clicked,this,&TempWdiget::openCom);
+    //获取所有参数单次
+    connect(getParamSingleBtn,&QPushButton::clicked,this,&TempWdiget::allParamOne);
+    //获取所有参数循环
+    connect(getParamCycleBtn,&QPushButton::clicked,this,&TempWdiget::allParamCycle);
     //获取温湿度单次
     connect(getTempCSingleBtn,&QPushButton::clicked,this,&TempWdiget::tempColdOne);
+    //获取温湿度循环
+    connect(getTempCCycleBtn,&QPushButton::clicked,this,&TempWdiget::tempColdCycle);
     //获取湿度单次
     connect(getColdSingleBtn,&QPushButton::clicked,this,&TempWdiget::coldOne);
+    //获取湿度循环
+    connect(getColdeCycleBtn,&QPushButton::clicked,this,&TempWdiget::coldCycle);
     //获取温度单次
     connect(getTempSingleBtn,&QPushButton::clicked,this,&TempWdiget::tempOne);
     //读取版本号
@@ -273,6 +284,12 @@ void TempWdiget::openCom(){
  */
 void TempWdiget::allParamOne()
 {
+    if(!worker){
+        return;
+    }
+    QMetaObject::invokeMethod(worker, [this]() {
+        worker->readRegister(0,5); // 阻塞操作在 modbusThread 中执行
+    }, Qt::QueuedConnection);
 
 }
 
@@ -282,7 +299,30 @@ void TempWdiget::allParamOne()
  */
 void TempWdiget::allParamCycle()
 {
-
+    if(isStarted){
+        // 如果定时器正在运行，则停止它，并更新UI
+        timer->stop();
+        timer.reset(); // 如果使用智能指针，这里可以直接reset而不是delete
+        isStarted = false;
+        getParamCycleBtn->setText("循环");
+    } else {
+        if(!worker){
+            return;
+        }
+        // 创建一个新的定时器，并设置其超时连接
+        timer = std::make_unique<QTimer>(this);
+        connect(timer.get(), &QTimer::timeout, this, [this]() {
+            if(worker){
+                // 使用queued connection确保它在事件循环中异步执行
+                QMetaObject::invokeMethod(worker, [this]() {
+                    worker->readRegister(0,5); // 阻塞操作在modbusThread中执行
+                }, Qt::QueuedConnection);
+            }
+        });
+        timer->start(1000); // 定时器每秒触发一次
+        isStarted = true;
+        getParamCycleBtn->setText("停止");
+    }
 }
 
 /**
@@ -294,13 +334,10 @@ void TempWdiget::tempColdOne()
     if(!worker){
         return;
     }
-    // writeGpioValue("PI10",1);
-    // QThread::msleep(100);
     QMetaObject::invokeMethod(worker, [this]() {
         worker->readRegister(1,2); // 阻塞操作在 modbusThread 中执行
     }, Qt::QueuedConnection);
-    // QThread::msleep(100);
-    // writeGpioValue("PI10",0);
+
 }
 
 /**
@@ -321,13 +358,10 @@ void TempWdiget::tempOne()
     if(!worker){
         return;
     }
-    // writeGpioValue("PI10",1);
-    // QThread::msleep(100);
+
     QMetaObject::invokeMethod(worker, [this]() {
         worker->readRegister(2,1); // 阻塞操作在 modbusThread 中执行
     }, Qt::QueuedConnection);
-    // QThread::msleep(100);
-    // writeGpioValue("PI10",0);
 }
 
 /**
@@ -348,13 +382,11 @@ void TempWdiget::coldOne()
     if(!worker){
         return;
     }
-    // writeGpioValue("PI10",1);
-    // QThread::msleep(100);
+
     QMetaObject::invokeMethod(worker, [this]() {
         worker->readRegister(1,1); // 阻塞操作在 modbusThread 中执行
     }, Qt::QueuedConnection);
-    // QThread::msleep(100);
-    // writeGpioValue("PI10",0);
+
 }
 
 /**
@@ -397,13 +429,10 @@ void TempWdiget::getVersion()
         return;
     }
 
-    // writeGpioValue("PI10",1);
-    // QThread::msleep(100);
     QMetaObject::invokeMethod(worker, [this]() {
         worker->readRegister(0,1); // 阻塞操作在 modbusThread 中执行
     }, Qt::QueuedConnection);
-    // QThread::msleep(100);
-    // writeGpioValue("PI10",0);
+
 }
 
 /**
@@ -463,7 +492,19 @@ void TempWdiget::updateError(QString msg)
 void TempWdiget::readDataFinish(const QVector<uint16_t> &data)
 {
     qDebug() << "TempWdiget readDataFinish data:" << data;
+    if(data.length() == 5){
+        // 全部参数更新
+        // 注意: 如果目的是显示数值，则直接转换为QString更为合适
+        showVersionEt->setText(QString::number(data[0])); // 显示数值而非尝试将其作为UTF-16字符处理
+        showAddrEt->setText("1");
+        showRateEt->setText(ratesCombox->currentText());
+
+        // 将浮点数转换为字符串后再设置文本
+        coldLabel->setText(QString::number(data[1]/10.0, 'f', 1)); // 格式化为小数点后一位
+        tempLabel->setText(QString::number(data[2]/10.0, 'f', 1));
+    }
 }
+
 
 /**
  * @brief TempWdiget::writeDataFinish

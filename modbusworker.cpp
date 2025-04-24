@@ -35,6 +35,7 @@ static int custom_rts_rtu_ioctl_on(void)
 
     write(fd, "1", 1);
     close(fd);
+    qDebug() << "custom_rts_rtu_ioctl_off 1";
     return 0;
 }
 
@@ -48,6 +49,7 @@ static int custom_rts_rtu_ioctl_off(void)
 
     write(fd, "0", 1);
     close(fd);
+    qDebug() << "custom_rts_rtu_ioctl_off 0";
     return 0;
 }
 
@@ -59,10 +61,10 @@ static void custom_rts_rtu(modbus_t *ctx, int on)
     }
     else
     {
-        //增加100ms延时
-        usleep(100000);
         custom_rts_rtu_ioctl_off();
     }
+    //100毫秒延时，保证数据发送完整
+    usleep(100000);
 }
 
 ModbusWorker::ModbusWorker(QObject *parent): QObject{parent}{
@@ -103,7 +105,7 @@ void ModbusWorker::connectModbus(QString com, int rate, int addr) {
     modbus_set_slave(modbus, addr);
 
     // 设置超时（单位：秒 + 微秒）
-    modbus_set_response_timeout(modbus, 1, 0);  // 1 秒超时
+    modbus_set_response_timeout(modbus, 1, 0);  // 1秒超时
 
     // 启用调试模式（可选）
     modbus_set_debug(modbus, TRUE);
@@ -176,13 +178,13 @@ void ModbusWorker::readRegister(int addr, int count)
     }
     QVector<uint16_t> buffer(count);
     int rc = modbus_read_registers(modbus, addr, count, buffer.data());
-    qDebug() << "ModbusWorker readRegister addr:" << addr << "rc:" << rc;
+    qDebug() << "ModbusWorker readRegister addr:" << addr << "rc:" << rc << "count:" << count << "buffer:" << buffer;
 
     if (rc == -1) {
         // 提供详细的错误信息
-        emit error("Read error: " + QString("Error code %1: %2").arg(errno).arg(modbus_strerror(errno)));
+ //       emit error("Read error: " + QString("Error code %1: %2").arg(errno).arg(modbus_strerror(errno)));
     } else if (rc < count) {
-        emit error("Partial read: expected " + QString::number(count) + " registers, got " + QString::number(rc));
+ //       emit error("Partial read: expected " + QString::number(count) + " registers, got " + QString::number(rc));
     } else {
         emit readFinished(buffer);
     }
@@ -203,6 +205,40 @@ void ModbusWorker::writeRegister(int addr, uint16_t value)
     qDebug() << "ModbusWorker writeRegister addr:" << addr << "value:" << value << "rc: " << rc;
 
     emit writeFinished(rc != -1);
+}
+
+/**
+ * @brief ModbusWorker::sendMsgRaw
+ * 发送原始数据
+ * @param raw_request
+ */
+void ModbusWorker::sendMsgRaw(uint8_t *raw_request)
+{
+    if(!modbus){
+        return;
+    }
+    qDebug() << "ModbusWorker sendMsgRaw raw_request.size:" << sizeof(raw_request);
+    // 发送原始请求
+    int rc = modbus_send_raw_request(modbus, raw_request, 8);
+    if (rc == -1) {
+        fprintf(stderr, "发送失败: %s\n", modbus_strerror(errno));
+        modbus_close(modbus);
+        modbus_free(modbus);
+        return;
+    }
+
+    // 接收响应
+    uint8_t response[MODBUS_RTU_MAX_ADU_LENGTH];
+    rc = modbus_receive_confirmation(modbus, response);
+    if (rc == -1) {
+        fprintf(stderr, "接收失败: %s\n", modbus_strerror(errno));
+    } else {
+        printf("响应数据（HEX）: %d",rc);
+        for (int i = 0; i < rc; i++) {
+            printf("%02X ", response[i]);
+        }
+        printf("\n");
+    }
 }
 
 

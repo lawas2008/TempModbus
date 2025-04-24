@@ -8,6 +8,7 @@
 #include <QComboBox>
 #include <QListView>
 #include <modbusworker.h>
+#include <QTimer>
 
 class TempWdiget : public QWidget
 {
@@ -65,6 +66,11 @@ private:
     //libModbus线程
     ModbusWorker *worker;
     QThread *modbusThread;
+
+    //定时器
+    std::unique_ptr<QTimer> timer;
+    bool isStarted = false;
+
 
 private slots:
     //打开串口
