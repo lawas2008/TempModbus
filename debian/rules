@@ -1,0 +1,13 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@ --with=qt5
+
+override_dh_auto_configure:
+	qmake
+
+override_dh_auto_build:
+	make -j$(shell nproc)
+
+override_dh_auto_install:
+	make INSTALL_ROOT=$(CURDIR)/debian/tempmodbus install

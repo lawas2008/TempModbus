@@ -1,0 +1,13 @@
+﻿Source: tempmodbus
+Section: utils
+Priority: optional
+Maintainer: Lawas <996772073@qq.com>
+Build-Depends: debhelper (>= 9), qtbase5-dev
+Standards-Version: 3.9.5
+Homepage: https://dev.developer.cn
+Package: tempmodbus
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Test.
+ This is a longer description of your application.
+ It can span multiple lines and should provide detailed information about the package.
