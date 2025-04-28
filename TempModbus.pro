@@ -3,8 +3,9 @@ QT       += core gui
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 # 添加 libmodbus 头文件和库路径
-LIBS += -lmodbus
-
+#LIBS += -lmodbus
+INCLUDEPATH += /opt/libmodbus/install/include
+LIBS += -L/opt/libmodbus/install/lib -lmodbus
 # 启用Wayland平台
 CONFIG += wayland
 
